@@ -24,12 +24,12 @@ pathway_datasets <- list(
 )
 
 # Initialize variables to store the results
-True_positives_all <- vector("list", length = 0)
-overlap_with_original_all <- vector("list", length = 0)
-new_identified_all <- vector("list", length = 0)
-overlap_False_positive_all <- vector("list", length = 0)
-interactions_all <- vector("list", length = 0)
-interactions_all2 <- vector("list", length = 0)
+True_positives_all <- c()
+overlap_with_original_all <- c()
+new_identified_all <- c()
+overlap_False_positive_all <-c()
+interactions_all <- c()
+interactions_all2 <- c()
 # Loop over the datasets
 for (i in seq_along(all_sig_datasets)) {
   # all_sig and pathway datasets
