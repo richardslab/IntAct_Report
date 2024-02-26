@@ -73,7 +73,7 @@ for (i in seq_along(all_sig_datasets)) {
   
   # Data about molecular interactions
   interactions <- spark_read_parquet(sc, interaction_path, memory = FALSE) %>%
-    filter(sourceDatabase == "intact") %>%
+    filter(sourceDatabase == "string") %>%
     filter(!is.na(targetA)) %>%
     filter(!is.na(targetB)) %>%
     filter(scoring > 0.42) %>%
@@ -137,11 +137,11 @@ withIntact_false_positive<- intact_result+original_result-withIntact_TP
   
 x_axis<- c("pLoF","pLoF+alpha","pLoF+5in5miss","pLoF+5in5+1miss")
 
-value<- c(42,154,56,622,60,281,73,1091,57,260,71,1070,60,347,72,1214)
+value<- c(original_TP,false_positive,withIntact_TP,withIntact_false_positive)
 data <- data.frame(
-  facet = rep(x_axis, each = 4), 
-  group = rep(c("Original", "IntAct"), each = 2),
-  stack = rep(c("True Positives","False Positives"), times = 2),
+  facet = rep(x_axis, each = 1), 
+  group = rep(c("Original", "IntAct"), each = 8),
+  stack = rep(c("True Positives","False Positives"), each = 4),
   value = value
 )
 
@@ -159,10 +159,10 @@ ggplot(data, aes(x = group, y = value, fill = stack)) +
 
 
 ## Only True Positives
-value2<- c(42,56,60,73,57,71,60,72)
+value2<- c(original_TP,withIntact_TP)
 data2 <- data.frame(
-  facet = rep(x_axis, each = 2), 
-  group = rep(c("Original", "IntAct"), each =1),
+  facet = rep(x_axis, each = 1), 
+  group = rep(c("Original", "IntAct"), each =4),
   stack = rep(c("True Positives"), times = 1),
   value = value2
 )
