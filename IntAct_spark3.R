@@ -129,8 +129,8 @@ original_TP <- c(42,60,57,60)
 false_positive <- original_result -original_TP
 
 # interactions_all - overlap_False_positive
-intact_result <- c(482,823,824,879)
-intact_TP <- c(14,13,14,12)
+intact_result <- interactions_all2
+intact_TP <- new_identified_all
 
 withIntact_TP<- original_TP + intact_TP
 withIntact_false_positive<- intact_result+original_result-withIntact_TP
