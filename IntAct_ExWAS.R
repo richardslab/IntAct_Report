@@ -9,13 +9,6 @@ library("reshape2")
 
 
 # Define the list of all_sig datasets and corresponding pathway datasets
-
-#define the files below, what are they? 
-#all_sig_pLoF define this
-#all_sig_pLoF_alpha define this
-#all_sig_pLoF_5in5 define this
-#all_sig_pLoF_5in5and1 define this
-
 all_sig_datasets <- list(
   all_sig_pLoF = "sig_gene_ids_pLoF(196).csv",
   all_sig_pLoF_alpha = "sig_gene_ids_pLoF_alpha(341).csv",
@@ -23,12 +16,6 @@ all_sig_datasets <- list(
   all_sig_pLoF_5in5and1 = "sig_gene_ids_pLoF_5in5and1(407).csv"
 )
 
-pathway_datasets <- list(
-  gs_sig_gene_ids_pLoF = "TP_gene_ids_pLoF(42).csv",
-  gs_sig_gene_ids_pLoF_alpha = "TP_gene_ids_pLoF_alphamissense(60).csv",
-  gs_sig_gene_ids_pLoF_5in5 = "TP_gene_ids_pLoF_5in5missense(57).csv",
-  gs_sig_gene_ids_pLoF_5in5and1 = "TP_gene_ids_pLoF_5and1in5missense(60).csv"
-)
 
 # Initialize variables to store the results
 True_positives_all <- c()
@@ -37,11 +24,12 @@ new_identified_all <- c()
 overlap_False_positive_all <-c()
 interactions_all <- c()
 interactions_all2 <- c()
+
 # Loop over the datasets
 for (i in seq_along(all_sig_datasets)) {
   # all_sig and pathway datasets
-  all_sig_pathway <- paste0("/Users/dandantan/Desktop/IntAct_spark_dataset/", all_sig_datasets[[i]])
-  TP <- paste0("/Users/dandantan/Desktop/IntAct_spark_dataset/", pathway_datasets[[i]])
+  all_sig_pathway <- paste0("your file path", all_sig_datasets[[i]])
+  TP <- paste0("your file path", all_sig_datasets[[i]])
   
   #read csv
   all_sig <- read.csv(all_sig_pathway)
@@ -80,20 +68,18 @@ for (i in seq_along(all_sig_datasets)) {
   
   # Data about molecular interactions
   interactions <- spark_read_parquet(sc, interaction_path, memory = FALSE) %>%
-    filter(sourceDatabase == "string") %>%
+    filter(sourceDatabase == "intact") %>%
     filter(!is.na(targetA)) %>%
     filter(!is.na(targetB)) %>%
     filter(scoring > 0.42) %>%
+    filter(speciesA == speciesB)%>%  # only keep human species
     select(targetA, targetB) %>%
     sdf_distinct()
-
+  
+  
   #Filter by interactions and indirect ass.
   interactors_ass <- sig_gene_ids %>%
     inner_join(interactions, by = c("gene_id" = "targetA")) %>%
-    inner_join(
-      ass_indirectby_ds,
-      by = c("targetB" = "targetId")
-    ) %>%
     select(trait_gene_pairs,Traits,gene_id,targetB) %>%
     sdf_distinct() %>%
     collect()
@@ -141,8 +127,8 @@ intact_TP <- new_identified_all
 
 withIntact_TP<- original_TP + intact_TP
 withIntact_false_positive<- intact_result+original_result-withIntact_TP
-  
-x_axis<- c("pLoF","pLoF+alpha","pLoF+5in5miss","pLoF+5in5+1miss")
+
+x_axis<- c("pLoF","pLoF with AlphaMissense","pLoF with Missense (5/5)","pLoF with Missense (1/5)")
 
 value<- c(original_TP,false_positive,withIntact_TP,withIntact_false_positive)
 data <- data.frame(
@@ -154,7 +140,7 @@ data <- data.frame(
 
 ggplot(data, aes(x = group, y = value, fill = stack)) + 
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = value), position = position_stack(vjust = 0.5), size = 3) +  # Add text labels
+  geom_text(aes(label = value), position = position_stack(vjust = 0.6), size = 4.5) + 
   facet_grid(~ facet) +
   labs(
     title = "Causal Gene Identification Across Four ExWAS Datasets With False Positives",
@@ -162,7 +148,9 @@ ggplot(data, aes(x = group, y = value, fill = stack)) +
     y = "Num of Significant Genes",
     fill = "Legend"
   ) +   scale_fill_manual(values = c("True Positives" = "lightblue", "False Positives" = "#FF9999")) +
-  theme_minimal() + theme(plot.title = element_text(hjust = 0.25), text = element_text(size = 10))
+  theme_minimal() + 
+  theme(strip.text = element_text(size = 14, color = "black")) +
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18))
 
 
 ## Only True Positives
@@ -176,7 +164,7 @@ data2 <- data.frame(
 
 ggplot(data2, aes(x = group, y = value, fill = stack)) + 
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = value), position = position_stack(vjust = 0.5), size = 3) +  # Add text labels
+  geom_text(aes(label = value), position = position_stack(vjust = 0.6), size = 5) + 
   facet_grid(~ facet) +
   labs(
     title = "Causal Gene Identification Across Four ExWAS Datasets Without False Positives",
@@ -184,4 +172,75 @@ ggplot(data2, aes(x = group, y = value, fill = stack)) +
     y = "Num of Causal Genes",
     fill = "Legend"
   ) + scale_fill_manual(values = "lightblue") +
-  theme_minimal()+ theme(plot.title = element_text(hjust = 0.25), text = element_text(size = 10))
+  theme_minimal()+   
+  theme(strip.text = element_text(size = 14, color = "black")) +
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18))
+
+
+############################--------------Evaluate not with roc/prc--------------------################################
+total_positive <- c(682,698,694,698)
+total_num_rows <- c(388442,393081,392014,393288)
+
+TP_original<- c(42,60,57,60)
+FP_original<- false_positive
+FN_original<- total_positive-TP_original
+TN_original<- total_num_rows-total_positive-FP_original
+
+sensitivity_original<- TP_original/(TP_original+FN_original) # 0.06158358 0.08595989 0.08213256 0.08595989
+specificity_original<- TN_original/(TN_original+FP_original) #0.9996028 0.9992839 0.9993356 0.9991161
+precision_original<-TP_original/(FP_original+TP_original) # 0.2142857 0.1759531 0.1798107 0.1474201
+
+## with IntAct
+TP_IntAct<- withIntact_TP
+FP_IntAct<- withIntact_false_positive
+FN_IntAct<- FN_original
+TN_IntAct<- TN_original
+
+sensitivity_IntAct<- TP_IntAct/(TP_IntAct+FN_IntAct) # 0.08045977 0.10267229 0.10028249 0.10140845
+specificity_IntAct<- TN_IntAct/(TN_IntAct+FP_IntAct) # 0.9983978 0.9972151 0.9972637 0.9969069
+precision_IntAct<-TP_IntAct/(FP_IntAct+TP_IntAct) # 0.08259587 0.06250000 0.06206294 0.05585725
+
+# Draw the plot
+x_axis1 <- c("sensitivity", "specificity", "precision")
+groups <- rep(c("Original ExWAS", "ExWAS+IntAct"), each = length(x_axis1) * 4)
+categories <- rep(c("pLoF","pLoF with \n AlphaMissense","pLoF with \n Missense(5/5)","pLoF with \n Missense (1/5)"), times = 2)
+data <- c(sensitivity_original[1],specificity_original[1],precision_original[1],
+          sensitivity_original[2],specificity_original[2],precision_original[2],
+          sensitivity_original[3],specificity_original[3],precision_original[3],
+          sensitivity_original[4],specificity_original[4],precision_original[4],
+          sensitivity_IntAct[1], specificity_IntAct[1], precision_IntAct[1],
+          sensitivity_IntAct[2], specificity_IntAct[2], precision_IntAct[2],
+          sensitivity_IntAct[3], specificity_IntAct[3], precision_IntAct[3],
+          sensitivity_IntAct[4], specificity_IntAct[4], precision_IntAct[4]
+)
+
+# Create a data frame
+df <- data.frame(
+  x_axis = rep(categories, each = length(x_axis1)),
+  groups = groups,
+  categories = rep(x_axis1, times = 8),
+  data = data
+)
+
+# Plotting
+ggplot(df, aes(x = x_axis, y = data, fill = groups)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.85), width = 0.8) + 
+  geom_text(aes(label = round(data, 3)), position = position_dodge(width = 0.85), vjust = -0.5, size = 4.5) +
+  
+  facet_wrap(~ categories, scales = "free_x") +
+  labs(
+    title = "Comparison of Metrics between Original ExWAS and ExWAS+IntAct",
+    x = "Datasets",
+    y = "Value",
+    fill = "Groups"
+  ) +
+  theme_minimal()+
+  theme(strip.text = element_text(size = 14, color = "black")) +
+  theme(strip.text.x = element_text(margin = margin(b = 20)), 
+        legend.position = "bottom",  
+        legend.spacing.x = unit(0.2, "cm"),
+        plot.title = element_text(hjust = 0.5,size =18),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 15))
+
