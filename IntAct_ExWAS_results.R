@@ -9,6 +9,13 @@ library("reshape2")
 
 
 # Define the list of all_sig datasets and corresponding pathway datasets
+
+#define the files below, what are they? 
+#all_sig_pLoF define this
+#all_sig_pLoF_alpha define this
+#all_sig_pLoF_5in5 define this
+#all_sig_pLoF_5in5and1 define this
+
 all_sig_datasets <- list(
   all_sig_pLoF = "sig_gene_ids_pLoF(196).csv",
   all_sig_pLoF_alpha = "sig_gene_ids_pLoF_alpha(341).csv",
