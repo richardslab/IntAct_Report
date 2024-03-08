@@ -48,7 +48,7 @@ for (i in seq_along(all_sig_datasets)) {
   )
   local_sig_gene_ids <- as.data.frame(sig_gene_ids %>% collect())
   ###### Read Platform data
-  local_path <- "/Users/dandantan/Desktop/Open_target_2021_FDA/Dataset" # data released 21.11
+  local_path <- "your file path" 
   
   ass_indirectby_ds_path <- paste(
     local_path,
@@ -91,7 +91,7 @@ for (i in seq_along(all_sig_datasets)) {
   gene_interactions <- paste(interactors_ass$targetB,interactors_ass$Traits,sep="_")
   
   #compare to the true positive
-  positive_control_set <- read_csv("/Users/dandantan/Desktop/IntAct_spark_dataset/positive_control_gene_list_with_opentarget.csv")
+  positive_control_set <- read_csv("your/file/path/positive_control_gene_list_with_opentarget.csv")
   positive_control_set$gene_trait_pairs <- paste(positive_control_set$ensg_gene_name, positive_control_set$Trait, sep = "_")
   
   # True Positives
@@ -177,7 +177,7 @@ ggplot(data2, aes(x = group, y = value, fill = stack)) +
   theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18))
 
 
-############################--------------Evaluate not with roc/prc--------------------################################
+############################--------------Evaluate with sensitivity, precison and specificity--------------------################################
 total_positive <- c(682,698,694,698)
 total_num_rows <- c(388442,393081,392014,393288)
 
@@ -214,7 +214,6 @@ data <- c(sensitivity_original[1],specificity_original[1],precision_original[1],
           sensitivity_IntAct[4], specificity_IntAct[4], precision_IntAct[4]
 )
 
-# Create a data frame
 df <- data.frame(
   x_axis = rep(categories, each = length(x_axis1)),
   groups = groups,
