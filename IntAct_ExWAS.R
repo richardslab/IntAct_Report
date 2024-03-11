@@ -8,6 +8,7 @@ library("likert")
 library("reshape2")
 
 
+
 # Define the list of all_sig datasets and corresponding pathway datasets
 all_sig_datasets <- list(
   all_sig_pLoF = "sig_gene_ids_pLoF(196).csv",
@@ -28,8 +29,8 @@ interactions_all2 <- c()
 # Loop over the datasets
 for (i in seq_along(all_sig_datasets)) {
   # all_sig and pathway datasets
-  all_sig_pathway <- paste0("your file path", all_sig_datasets[[i]])
-  TP <- paste0("your file path", all_sig_datasets[[i]])
+  all_sig_pathway <- paste0("/Users/dandantan/Desktop/IntAct_spark_dataset/", all_sig_datasets[[i]])
+  TP <- paste0("/Users/dandantan/Desktop/IntAct_spark_dataset/", all_sig_datasets[[i]])
   
   #read csv
   all_sig <- read.csv(all_sig_pathway)
@@ -48,7 +49,7 @@ for (i in seq_along(all_sig_datasets)) {
   )
   local_sig_gene_ids <- as.data.frame(sig_gene_ids %>% collect())
   ###### Read Platform data
-  local_path <- "your file path" 
+  local_path <- "/Users/dandantan/Desktop/Open_target_2021_FDA/Dataset" # data released 21.11
   
   ass_indirectby_ds_path <- paste(
     local_path,
@@ -91,7 +92,7 @@ for (i in seq_along(all_sig_datasets)) {
   gene_interactions <- paste(interactors_ass$targetB,interactors_ass$Traits,sep="_")
   
   #compare to the true positive
-  positive_control_set <- read_csv("your/file/path/positive_control_gene_list_with_opentarget.csv")
+  positive_control_set <- read_csv("/Users/dandantan/Desktop/IntAct_spark_dataset/positive_control_gene_list_with_opentarget.csv")
   positive_control_set$gene_trait_pairs <- paste(positive_control_set$ensg_gene_name, positive_control_set$Trait, sep = "_")
   
   # True Positives
@@ -116,7 +117,43 @@ for (i in seq_along(all_sig_datasets)) {
   interactions_all2 <- c(interactions_all2,(nrow(interactors_ass)-overlap_False_positive))
 }
 
-#visualize the data
+#####################---------------------------------Try with Randomly selected genes--------------------------------#########################
+differences<- interactions_all2
+ExWAS_results1 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_plof.csv")
+ExWAS_results2 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_alpha.csv")
+ExWAS_results3 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
+ExWAS_results4 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5and1.csv")
+
+total_average<-c()
+for (x in 1:4){
+  if (x == 1){
+    ExWAS_results <- ExWAS_results1
+  } else if (x == 2){
+    ExWAS_results <- ExWAS_results2
+  } else if (x == 3){
+    ExWAS_results <- ExWAS_results3
+  } else if (x == 4){
+    ExWAS_results <- ExWAS_results4
+  }
+  sums <- numeric(10000)
+  for (i in 1:10000) {
+    difference <- differences[x]
+    random_indices <- sample(1:nrow(ExWAS_results), difference, replace = FALSE)
+    random_genes <- ExWAS_results4[random_indices, ]$trait_gene_pairs
+    random_genes <- as.data.frame(random_genes)
+    random_genes$is_in_positive <- ifelse(random_genes$random_genes %in% positive_control_set$gene_trait_pairs, 1, 0)
+    sums[i] <- sum(random_genes$is_in_positive)
+  }
+  average_sum <- mean(sums)
+  total_average <- c(total_average,average_sum)
+}
+
+cat("Averaged increased of True Positive with randomly selected pLoF is:",total_average[1],"\n",
+    "Averaged increased of True Positive with randomly selected pLoF with AlphaMissense is:",total_average[2],"\n",
+    "Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",total_average[3],"\n",
+    "Averaged increased of True Positive with randomly selected pLoF with Missense (1/5) is:",total_average[4])
+
+######################-------------------------------visualize the data-----------------------------------------------################################
 original_result <-c(196,341,317,407)
 original_TP <- c(42,60,57,60)
 false_positive <- original_result -original_TP
@@ -214,6 +251,7 @@ data <- c(sensitivity_original[1],specificity_original[1],precision_original[1],
           sensitivity_IntAct[4], specificity_IntAct[4], precision_IntAct[4]
 )
 
+# Create a data frame
 df <- data.frame(
   x_axis = rep(categories, each = length(x_axis1)),
   groups = groups,
