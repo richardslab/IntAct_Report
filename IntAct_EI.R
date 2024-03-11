@@ -132,7 +132,7 @@ sum(interactors_ass$is_in_positive) # 48/968
 ei_cutoff_loci_IntAct <- bind_rows(interactors_ass, ei_cutoff_loci)%>%
   distinct()
 
-###########------------------ With Random selected genes--------------##########
+####################-------------------------------- With Random selected genes---------------------------------################
 ExWAS_results <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
 difference <- nrow(ei_cutoff_loci_IntAct) - nrow(ei_cutoff_loci) # number of interacting genes
 positive_control_set_ei2 <- positive_control_set_ei %>%
