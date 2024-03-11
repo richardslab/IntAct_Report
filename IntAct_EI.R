@@ -11,11 +11,11 @@ library("biomaRt")
 
 ###################################----------------------------Data Preprocesses--------------------------------#############################
 # Read the EI algorithm prediction results
-ei_path <-"your file path/ei_results.csv"
+ei_path <-"/Users/dandantan/Desktop/IntAct_spark_dataset/ei_results.csv"
 ei_results_all <- read.csv(ei_path)
 
 # Read the positive control set (validate Ei result)
-result_path<- "your file path/positive_control_set_ei.csv"
+result_path<- "~/Desktop/IntAct_spark_dataset/positive_control_set_ei.csv"
 positive_control_set_ei <- read.csv(result_path)
 positive_control_set_ei$gene_trait_pairs <- paste(positive_control_set_ei$hgnc_gene_name, positive_control_set_ei$Trait, sep = "_")
 
@@ -76,7 +76,7 @@ highest_prob_per_locus_new$ensmble_genes <- unlist(highest_prob_per_locus_new$en
 config <- spark_config()
 sc <- spark_connect(master = "local", config = config)
 
-local_path <- "your file path"
+local_path <- "/Users/dandantan/Desktop/Open_target_2021_FDA/Dataset"
 ass_indirectby_ds_path <- paste(
   local_path,
   "/associationByDatasourceIndirect/",
@@ -131,6 +131,35 @@ sum(interactors_ass$is_in_positive) # 48/968
 
 ei_cutoff_loci_IntAct <- bind_rows(interactors_ass, ei_cutoff_loci)%>%
   distinct()
+
+###########------------------ With Random selected genes--------------##########
+ExWAS_results <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
+difference <- nrow(ei_cutoff_loci_IntAct) - nrow(ei_cutoff_loci) # number of interacting genes
+positive_control_set_ei2 <- positive_control_set_ei %>%
+  mutate(
+    Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
+    Trait = ifelse(Trait == "tg", "IRNT_TG", Trait),
+    Trait = ifelse(Trait == "t2d", "T2D", Trait),
+    Trait = ifelse(Trait == "ldl", "IRNT_LDL", Trait),
+    Trait = ifelse(Trait == "height", "IRNT_height", Trait),
+    Trait = ifelse(Trait == "lowtsh", "lowtsh", Trait),
+    Trait = ifelse(Trait == "rbc", "IRNT_RBC", Trait),
+    Trait = ifelse(Trait == "dbp", "IRNT_DBP", Trait),
+    Trait = ifelse(Trait == "calcium", "IRNT_Ca", Trait),
+    Trait = ifelse(Trait == "sbp", "IRNT_SBP", Trait),
+    Trait = ifelse(Trait == "glucose", "IRNT_glu", Trait),
+    Trait = ifelse(Trait == "dbilirubin", "IRNT_biliru", Trait)
+  )
+positive_control_set_ei2$gene_trait_pairs2 <- paste(positive_control_set_ei2$ensg_gene_name, positive_control_set_ei2$Trait, sep = "_")
+sums <- numeric(10000)
+for (i in 1:10000) {
+  random_indices <- sample(1:nrow(ExWAS_results), difference, replace = FALSE)
+  random_genes <- ExWAS_results[random_indices, ]$trait_gene_pairs
+  random_genes <- as.data.frame(random_genes)
+  random_genes$is_in_positive <- ifelse(random_genes$random_genes %in% positive_control_set_ei2$gene_trait_pairs2, 1, 0)
+  sums[i] <- sum(random_genes$is_in_positive)
+}
+average_sum <- mean(sums) # about 1
 
 ########################------------------Evaluate  with sensitivity and specificity and precision-------------------------##################################
 
