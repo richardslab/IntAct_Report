@@ -78,7 +78,7 @@ for (i in seq_along(all_sig_datasets)) {
     sdf_distinct()
   
   
-  #Filter by interactions and indirect ass.
+  #Filter by interactions
   interactors_ass <- sig_gene_ids %>%
     inner_join(interactions, by = c("gene_id" = "targetA")) %>%
     select(trait_gene_pairs,Traits,gene_id,targetB) %>%
@@ -93,6 +93,23 @@ for (i in seq_along(all_sig_datasets)) {
   
   #compare to the true positive
   positive_control_set <- read_csv("/Users/dandantan/Desktop/IntAct_spark_dataset/positive_control_gene_list_with_opentarget.csv")
+  positive_control_set <- positive_control_set %>%
+    mutate(
+      Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
+      Trait = ifelse(Trait == "tg", "IRNT_TG", Trait),
+      Trait = ifelse(Trait == "t2d", "T2D", Trait),
+      Trait = ifelse(Trait == "ldl", "IRNT_LDL", Trait),
+      Trait = ifelse(Trait == "height", "IRNT_height", Trait),
+      Trait = ifelse(Trait == "BMI", "IRNT_BMI", Trait),
+      Trait = ifelse(Trait == "lowtsh", "lowtsh", Trait),
+      Trait = ifelse(Trait == "rbc", "IRNT_RBC", Trait),
+      Trait = ifelse(Trait == "dbp", "IRNT_DBP", Trait),
+      Trait = ifelse(Trait == "calcium", "IRNT_Ca", Trait),
+      Trait = ifelse(Trait == "WHR", "IRNT_WHR", Trait),
+      Trait = ifelse(Trait == "sbp", "IRNT_SBP", Trait),
+      Trait = ifelse(Trait == "glucose", "IRNT_glu", Trait),
+      Trait = ifelse(Trait == "dbilirubin", "IRNT_biliru", Trait)
+    )
   positive_control_set$gene_trait_pairs <- paste(positive_control_set$ensg_gene_name, positive_control_set$Trait, sep = "_")
   
   # True Positives
@@ -118,7 +135,7 @@ for (i in seq_along(all_sig_datasets)) {
 }
 
 #####################---------------------------------Try with Randomly selected genes--------------------------------#########################
-differences<- interactions_all2
+differences<- interactions_all2 #1737 3264 3364 4398
 ExWAS_results1 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_plof.csv")
 ExWAS_results2 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_alpha.csv")
 ExWAS_results3 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
@@ -165,53 +182,58 @@ intact_TP <- new_identified_all
 withIntact_TP<- original_TP + intact_TP
 withIntact_false_positive<- intact_result+original_result-withIntact_TP
 
-x_axis<- c("pLoF","pLoF with AlphaMissense","pLoF with Missense (5/5)","pLoF with Missense (1/5)")
+x_axis<- c("pLoF","pLoF with \nAlphaMissense","pLoF with \nMissense (5/5)","pLoF with\n Missense (1/5)")
 
 value<- c(original_TP,false_positive,withIntact_TP,withIntact_false_positive)
 data <- data.frame(
   facet = rep(x_axis, each = 1), 
-  group = rep(c("Original", "IntAct"), each = 8),
+  group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each = 8),
   stack = rep(c("True Positives","False Positives"), each = 4),
   value = value
 )
 
 ggplot(data, aes(x = group, y = value, fill = stack)) + 
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = value), position = position_stack(vjust = 0.6), size = 4.5) + 
+  geom_text(aes(label = value), position = position_stack(vjust = 0.7), size = 6.5) + 
   facet_grid(~ facet) +
   labs(
-    title = "Causal Gene Identification Across Four ExWAS Datasets With False Positives",
     x = "ExWAS Datasets",
     y = "Num of Significant Genes",
     fill = "Legend"
-  ) +   scale_fill_manual(values = c("True Positives" = "lightblue", "False Positives" = "#FF9999")) +
+  ) +
   theme_minimal() + 
-  theme(strip.text = element_text(size = 14, color = "black")) +
-  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18))
-
+  theme(strip.text = element_text(size = 20, color = "black"),
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.text=element_text(size=20))
 
 ## Only True Positives
 value2<- c(original_TP,withIntact_TP)
 data2 <- data.frame(
   facet = rep(x_axis, each = 1), 
-  group = rep(c("Original", "IntAct"), each =4),
+  group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each =4),
   stack = rep(c("True Positives"), times = 1),
   value = value2
 )
 
 ggplot(data2, aes(x = group, y = value, fill = stack)) + 
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = value), position = position_stack(vjust = 0.6), size = 5) + 
+  geom_text(aes(label = value), position = position_stack(vjust = 0.6), size = 9) + 
   facet_grid(~ facet) +
   labs(
-    title = "Causal Gene Identification Across Four ExWAS Datasets Without False Positives",
     x = "ExWAS Datasets",
     y = "Num of Causal Genes",
     fill = "Legend"
   ) + scale_fill_manual(values = "lightblue") +
   theme_minimal()+   
-  theme(strip.text = element_text(size = 14, color = "black")) +
-  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18))
+  theme(strip.text = element_text(size = 20, color = "black"),
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.text=element_text(size=20))
 
 
 ############################--------------Evaluate with sensitivity, precison and specificity--------------------################################
@@ -238,46 +260,88 @@ specificity_IntAct<- TN_IntAct/(TN_IntAct+FP_IntAct) # 0.9983978 0.9972151 0.997
 precision_IntAct<-TP_IntAct/(FP_IntAct+TP_IntAct) # 0.08259587 0.06250000 0.06206294 0.05585725
 
 # Draw the plot
-x_axis1 <- c("sensitivity", "specificity", "precision")
-groups <- rep(c("Original ExWAS", "ExWAS+IntAct"), each = length(x_axis1) * 4)
-categories <- rep(c("pLoF","pLoF with \n AlphaMissense","pLoF with \n Missense(5/5)","pLoF with \n Missense (1/5)"), times = 2)
-data <- c(sensitivity_original[1],specificity_original[1],precision_original[1],
-          sensitivity_original[2],specificity_original[2],precision_original[2],
-          sensitivity_original[3],specificity_original[3],precision_original[3],
-          sensitivity_original[4],specificity_original[4],precision_original[4],
-          sensitivity_IntAct[1], specificity_IntAct[1], precision_IntAct[1],
-          sensitivity_IntAct[2], specificity_IntAct[2], precision_IntAct[2],
-          sensitivity_IntAct[3], specificity_IntAct[3], precision_IntAct[3],
-          sensitivity_IntAct[4], specificity_IntAct[4], precision_IntAct[4]
+precision_all <- c(precision_original[1],precision_original[2],precision_original[3],precision_original[4],
+                   precision_IntAct[1],precision_IntAct[2],precision_IntAct[3],precision_IntAct[4])
+sensitivity_all<- c(sensitivity_original[1],sensitivity_original[2],sensitivity_original[3],sensitivity_original[4],
+                    sensitivity_IntAct[1],sensitivity_IntAct[2],sensitivity_IntAct[3],sensitivity_IntAct[4])
+specificity_all <- c(specificity_original[1],specificity_original[2],specificity_original[3],specificity_original[4],
+                    specificity_IntAct[1],specificity_IntAct[2],specificity_IntAct[3],specificity_IntAct[4])
+
+categories <- rep(c("pLoF","pLoF with \n AlphaMissense","pLoF with \n Missense(5/5)","pLoF with \n Missense (1/5)"))
+
+plot_precision <- data.frame(
+  facet = rep(categories, each = 1), 
+  group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each =4),
+  value = precision_all
 )
 
-# Create a data frame
-df <- data.frame(
-  x_axis = rep(categories, each = length(x_axis1)),
-  groups = groups,
-  categories = rep(x_axis1, times = 8),
-  data = data
+plot_sensitivity <- data.frame(
+  facet = rep(categories, each = 1), 
+  group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each =4),
+  value = sensitivity_all
 )
 
-# Plotting
-ggplot(df, aes(x = x_axis, y = data, fill = groups)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.85), width = 0.8) + 
-  geom_text(aes(label = round(data, 3)), position = position_dodge(width = 0.85), vjust = -0.5, size = 4.5) +
-  
-  facet_wrap(~ categories, scales = "free_x") +
+plot_specificity <- data.frame(
+  facet = rep(categories, each = 1), 
+  group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each =4),
+  value = specificity_all
+)
+
+
+##Precision
+ggplot(plot_precision, aes(x = group, y = value, fill = group)) + 
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = round(value, 2)), position = position_stack(vjust = 0.6), size = 9) + 
+  facet_grid(~ facet) +
   labs(
-    title = "Comparison of Metrics between Original ExWAS and ExWAS+IntAct",
-    x = "Datasets",
-    y = "Value",
-    fill = "Groups"
+    x = "ExWAS Datasets",
+    y = "Precision",
+    fill = "Legend"
   ) +
-  theme_minimal()+
-  theme(strip.text = element_text(size = 14, color = "black")) +
-  theme(strip.text.x = element_text(margin = margin(b = 20)), 
-        legend.position = "bottom",  
-        legend.spacing.x = unit(0.2, "cm"),
-        plot.title = element_text(hjust = 0.5,size =18),
-        axis.text.x = element_text(size = 10),
-        axis.text.y = element_text(size = 12),
-        axis.title = element_text(size = 15))
+  theme_minimal()+   
+  theme(strip.text = element_text(size = 20, color = "black"),
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.text=element_text(size=16))
+
+##Sensitivity
+ggplot(plot_sensitivity, aes(x = group, y = value, fill = group)) + 
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = round(value, 2)), position = position_stack(vjust = 0.6), size = 9) + 
+  facet_grid(~ facet) +
+  labs(
+    x = "ExWAS Datasets",
+    y = "Sensitivity",
+    fill = "Legend"
+  ) +
+  theme_minimal()+   
+  theme(strip.text = element_text(size = 20, color = "black"),
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.text=element_text(size=16))
+
+
+##Specificity
+ggplot(plot_specificity, aes(x = group, y = value, fill = group)) + 
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = round(value, 2)), position = position_stack(vjust = 0.6), size = 9) + 
+  facet_grid(~ facet) +
+  labs(
+    x = "ExWAS Datasets",
+    y = "Specificity",
+    fill = "Legend"
+  ) +
+  theme_minimal()+   
+  theme(strip.text = element_text(size = 20, color = "black"),
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        legend.text=element_text(size=16))
+
+
 
