@@ -19,28 +19,26 @@ result_path<- "~/Desktop/IntAct_spark_dataset/positive_control_set_ei.csv"
 positive_control_set_ei <- read.csv(result_path)
 positive_control_set_ei$gene_trait_pairs <- paste(positive_control_set_ei$hgnc_gene_name, positive_control_set_ei$Trait, sep = "_")
 
-# Cutoff with 0.46 to optimize performance (indicated in the paper)
-ei_cutoff <- ei_results_all %>%
-  filter(all.locus.prob >= 0.46)
-ei_cutoff$gene_trait_pairs <- paste(ei_cutoff$names.genes, ei_cutoff$all.trait, sep = "_")
+
+ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
+
 # Check if the EI-identified is in the positive control set
-ei_cutoff$is_in_positive <- ifelse(ei_cutoff$gene_trait_pairs %in% positive_control_set_ei$gene_trait_pairs, 1, 0)
+ei_results_all$is_in_positive <- ifelse(ei_results_all$gene_trait_pairs %in% positive_control_set_ei$gene_trait_pairs, 1, 0)
 
 # Find all loci containing positive control genes for each trait
-positive_loci <- ei_cutoff %>%
+positive_loci <- ei_results_all %>%
   group_by(all.trait) %>%
   filter(is_in_positive == 1) %>%
   dplyr::select(all.trait, locus.name)
 
 # Only keep the loci with at least one positive control gene for each trait
-ei_cutoff_loci <- ei_cutoff %>%
+ei_loci <- ei_results_all %>%
   semi_join(positive_loci, by = c("all.trait","locus.name"))
 
-#######################--------------------------Add IntAct Information -------------------------#############################
 # Find the highest EI score for each trait at each locus
-highest_prob_per_locus <- ei_cutoff_loci %>%
+highest_prob_per_locus <- ei_loci %>%
   group_by(all.trait, locus.name) %>%
-  filter(all.locus.prob == max(all.locus.prob, na.rm = TRUE)) #113 genes
+  filter(all.locus.prob == max(all.locus.prob, na.rm = TRUE)) #169 genes
 # Convert Gene Symbol to ensembl ID
 ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 ensembl_gene_id <- data.frame(gene_name = highest_prob_per_locus$names.genes,
@@ -60,36 +58,34 @@ for (i in 1:nrow(ensembl_gene_id)) {
 }
 
 # manually correct ensbmle id
-ensembl_gene_id[[44,2]] = "ENSG00000171862"
-ensembl_gene_id[[51,2]] = "ENSG00000103489"
-ensembl_gene_id[[61,2]] = "ENSG00000214575"
-ensembl_gene_id[[92,2]] = "ENSG00000275410"
-ensembl_gene_id[[109,2]] = "ENSG00000084674"
-
+ensembl_gene_id[[24,2]] = "ENSG00000225663"
+ensembl_gene_id[[44,2]] = "ENSG00000175164"
+ensembl_gene_id[[74,2]] = "ENSG00000171862"
+ensembl_gene_id[[84,2]] = "ENSG00000103489"
+ensembl_gene_id[[102,2]] = "ENSG00000214575"
+ensembl_gene_id[[103,2]] = "ENSG00000007968"
+ensembl_gene_id[[137,2]] = "ENSG00000168925"
+ensembl_gene_id[[145,2]] = "ENSG00000275410"
+ensembl_gene_id[[150,2]] = "ENSG00000053918"
+ensembl_gene_id[[165,2]] = "ENSG00000084674"
 
 highest_prob_per_locus_new <- highest_prob_per_locus %>% 
   left_join(ensembl_gene_id, by = c("names.genes" = "gene_name"))
 
 highest_prob_per_locus_new$ensmble_genes <- unlist(highest_prob_per_locus_new$ensmble_genes)
 
+#######################--------------------------Add IntAct Information -------------------------#############################
+
 ### Find IntAct Partners
 config <- spark_config()
 sc <- spark_connect(master = "local", config = config)
 
 local_path <- "/Users/dandantan/Desktop/Open_target_2021_FDA/Dataset"
-ass_indirectby_ds_path <- paste(
-  local_path,
-  "/associationByDatasourceIndirect/",
-  sep = ""
-)
 interaction_path <- paste(
   local_path,
   "/interaction/",
   sep = ""
 )
-
-# Data about indirect associations
-ass_indirectby_ds <- spark_read_parquet(sc, ass_indirectby_ds_path)
 
 # Data about molecular interactions
 interactions <- spark_read_parquet(sc, interaction_path, memory = FALSE) %>%
@@ -129,12 +125,12 @@ interactors_ass <- interactors_ass %>% rename(
 )
 sum(interactors_ass$is_in_positive) # 48/968
 
-ei_cutoff_loci_IntAct <- bind_rows(interactors_ass, ei_cutoff_loci)%>%
+ei_loci_IntAct <- bind_rows(interactors_ass, highest_prob_per_locus_new)%>%
   distinct()
 
-####################-------------------------------- With Random selected genes---------------------------------################
+###########------------------ With Random selected genes--------------##########
 ExWAS_results <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
-difference <- nrow(ei_cutoff_loci_IntAct) - nrow(ei_cutoff_loci) # number of interacting genes
+difference <- nrow(ei_loci_IntAct) - nrow(highest_prob_per_locus_new) # number of interacting genes
 positive_control_set_ei2 <- positive_control_set_ei %>%
   mutate(
     Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
@@ -160,29 +156,36 @@ for (i in 1:10000) {
   sums[i] <- sum(random_genes$is_in_positive)
 }
 average_sum <- mean(sums) # about 1
+TP_random <- 117 +1
+FP_random <- 334 + difference -1
+FN_random <- 63
+TN_random <- 28411
+precision_random <- TP_random/(TP_random+FP_random) #0.06035806
+sensitivity_random <- TP_random/(TP_random+FN_random)#0.6519337
+specificity_random<- TN_random/(TN_random+FP_random)#0.9392687
 
 ########################------------------Evaluate  with sensitivity and specificity and precision-------------------------##################################
 
 ### EI prediction
-TP_ei<- sum(ei_cutoff_loci$is_in_positive) #117
-FP_ei <- nrow(ei_cutoff_loci)-TP_ei #334
+TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) #69
+FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei #100
 
 ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
 ei_results_all$is_in_positive <- ifelse(ei_results_all$gene_trait_pairs %in% positive_control_set_ei$gene_trait_pairs, 1, 0)
 
-FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei #63
-TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei #28411
+FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei #111
+TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei #28645
 
 sensitivity_ei<- TP_ei/(TP_ei+FN_ei) #0.65
 specificity_ei<- TN_ei/(TN_ei+FP_ei) #0.9883
 precision_ei<-TP_ei/(FP_ei+TP_ei) #0.2594
 
 ### EI prediction + IntAct
-TP_ei_intact<- sum(ei_cutoff_loci_IntAct$is_in_positive) #165
-FP_ei_intact <- nrow(ei_cutoff_loci_IntAct)-TP_ei_intact #1254
+TP_ei_intact<- sum(ei_loci_IntAct$is_in_positive) #118
+FP_ei_intact <- nrow(ei_loci_IntAct)-TP_ei_intact #1555
 
-FN_ei_intact<- FN_ei #63
-TN_ei_intact <- TN_ei #28411
+FN_ei_intact<- FN_ei #111
+TN_ei_intact <- TN_ei #28645
 
 sensitivity_ei_intact<- TP_ei_intact/(TP_ei_intact+FN_ei_intact) #0.72368
 specificity_ei_intact<- TN_ei_intact/(TN_ei_intact+FP_ei_intact) #0.95772
@@ -200,18 +203,17 @@ data <- data.frame(Method = rep(c("EI", "EI with IntAct"), each = 3),
 
 ggplot(data, aes(x = Metric, y = Value, fill = Method)) +
   geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = round(Value, 3)), vjust = -0.3, position = position_dodge(width = 0.9), size = 4) +
-  labs(x = "Metric", y = "Value", title = "Performance Comparison of EI Methods") +
+  geom_text(aes(label = round(Value, 3)), vjust = -0.2, position = position_dodge(width = 0.9), size = 9) +
+  labs(x = "Metric", y = "Value") +
   theme_minimal() +
   theme(
     text = element_text(size = 12),  
-    axis.text.x = element_text(size = 16),  
-    axis.text.y = element_text(size = 12),
-    axis.title.x = element_text(size = 14), 
-    axis.title.y = element_text(size = 14), 
-    plot.title = element_text(size = 18, hjust = 0.5),
-    legend.text = element_text(size = 12),  
-    legend.title = element_text(size = 14),
+    axis.text.x = element_text(size = 22),  
+    axis.text.y = element_text(size = 20),
+    axis.title.x = element_text(size = 20), 
+    axis.title.y = element_text(size = 20), 
+    legend.text = element_text(size = 20),  
+    legend.title = element_text(size = 20),
     legend.position = "bottom"
   )
 
@@ -227,16 +229,15 @@ df2 <- data.frame(Method = methods, group =groups,value=c(total_TP,total_FP))
 
 ggplot(df2, aes(x = Method, y = value, fill = group)) +
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = round(value, 3)), vjust = 1.5, size = 4, color = "black",position = position_stack(vjust = 0.6)) +
-  labs(x = "Method", y = "Num of Significant Genes", fill = "Group", title = "Performance of Causal Gene Identification with Different Methods") +
+  geom_text(aes(label = round(value, 3)), vjust = 1, size = 9, color = "black",position = position_stack(vjust = 0.6)) +
+  labs(x = "Method", y = "Num of Significant Genes", fill = "Legend",) +
   theme_minimal() +
-  theme(axis.text.x = element_text(size = 12),  
-        axis.text.y = element_text(size = 14),  
-        axis.title.x = element_text(size = 14), 
-        axis.title.y = element_text(size = 14),  
-        plot.title = element_text(size = 18, hjust = 0.5),
-        legend.text = element_text(size = 12),
-        legend.title = element_text(size = 14),
-        legend.position = "right")
+  theme(axis.text.x = element_text(size = 22),  
+        axis.text.y = element_text(size = 20),  
+        axis.title.x = element_text(size = 20), 
+        axis.title.y = element_text(size = 20),  
+        legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.position = "bottom")
 
 
