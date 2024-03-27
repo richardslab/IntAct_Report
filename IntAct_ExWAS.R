@@ -218,9 +218,9 @@ FP_original<- false_positive
 FN_original<- total_positive-TP_original
 TN_original<- total_num_rows-total_positive-FP_original
 
-sensitivity_original<- TP_original/(TP_original+FN_original) # 0.06158358 0.08595989 0.08213256 0.08595989
-specificity_original<- TN_original/(TN_original+FP_original) #0.9996028 0.9992839 0.9993356 0.9991161
-precision_original<-TP_original/(FP_original+TP_original) # 0.2142857 0.1759531 0.1798107 0.1474201
+sensitivity_original<- TP_original/(TP_original+FN_original) 
+specificity_original<- TN_original/(TN_original+FP_original) 
+precision_original<-TP_original/(FP_original+TP_original)
 
 ## with IntAct
 TP_IntAct<- withIntact_TP
@@ -228,9 +228,9 @@ FP_IntAct<- withIntact_false_positive
 FN_IntAct<- FN_original
 TN_IntAct<- TN_original
 
-sensitivity_IntAct<- TP_IntAct/(TP_IntAct+FN_IntAct) # 0.08045977 0.10267229 0.10028249 0.10140845
-specificity_IntAct<- TN_IntAct/(TN_IntAct+FP_IntAct) # 0.9983978 0.9972151 0.9972637 0.9969069
-precision_IntAct<-TP_IntAct/(FP_IntAct+TP_IntAct) # 0.08259587 0.06250000 0.06206294 0.05585725
+sensitivity_IntAct<- TP_IntAct/(TP_IntAct+FN_IntAct) 
+specificity_IntAct<- TN_IntAct/(TN_IntAct+FP_IntAct) 
+precision_IntAct<-TP_IntAct/(FP_IntAct+TP_IntAct) 
 
 # Draw the plot
 precision_all <- c(precision_original[1],precision_original[2],precision_original[3],precision_original[4],
