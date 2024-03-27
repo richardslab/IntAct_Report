@@ -129,7 +129,7 @@ ei_loci_IntAct <- bind_rows(interactors_ass, highest_prob_per_locus_new)%>%
   distinct()
 
 ###########------------------ With Random selected genes--------------##########
-ExWAS_results <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
+ExWAS_results <- read.csv("ExWAS_Data/ExWAS_results_all_5in5.csv")
 difference <- nrow(ei_loci_IntAct) - nrow(highest_prob_per_locus_new) # number of interacting genes
 positive_control_set_ei2 <- positive_control_set_ei %>%
   mutate(
