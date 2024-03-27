@@ -11,11 +11,11 @@ library("biomaRt")
 
 ###################################----------------------------Data Preprocesses--------------------------------#############################
 # Read the EI algorithm prediction results
-ei_path <-"/Users/dandantan/Desktop/IntAct_spark_dataset/ei_results.csv"
+ei_path <-"EI_Data/ei_results.csv"
 ei_results_all <- read.csv(ei_path)
 
 # Read the positive control set (validate Ei result)
-result_path<- "~/Desktop/IntAct_spark_dataset/positive_control_set_ei.csv"
+result_path<- "EI_Data/positive_control_set_ei.csv"
 positive_control_set_ei <- read.csv(result_path)
 positive_control_set_ei$gene_trait_pairs <- paste(positive_control_set_ei$hgnc_gene_name, positive_control_set_ei$Trait, sep = "_")
 
@@ -80,7 +80,7 @@ highest_prob_per_locus_new$ensmble_genes <- unlist(highest_prob_per_locus_new$en
 config <- spark_config()
 sc <- spark_connect(master = "local", config = config)
 
-local_path <- "/Users/dandantan/Desktop/Open_target_2021_FDA/Dataset"
+local_path <- "YourPathway/Open_target_2021_FDA/Dataset"
 interaction_path <- paste(
   local_path,
   "/interaction/",
@@ -156,13 +156,13 @@ for (i in 1:10000) {
   sums[i] <- sum(random_genes$is_in_positive)
 }
 average_sum <- mean(sums) # about 1
-TP_random <- 117 +1
-FP_random <- 334 + difference -1
-FN_random <- 63
-TN_random <- 28411
-precision_random <- TP_random/(TP_random+FP_random) #0.06035806
-sensitivity_random <- TP_random/(TP_random+FN_random)#0.6519337
-specificity_random<- TN_random/(TN_random+FP_random)#0.9392687
+TP_random <- 69 + average_sum
+FP_random <- 100 + difference -average_sum
+FN_random <- 111
+TN_random <- 28645
+precision_random <- TP_random/(TP_random+FP_random) #0.04224812
+sensitivity_random <- TP_random/(TP_random+FN_random)#0.3890394
+specificity_random<- TN_random/(TN_random+FP_random)#0.9470261
 
 ########################------------------Evaluate  with sensitivity and specificity and precision-------------------------##################################
 
