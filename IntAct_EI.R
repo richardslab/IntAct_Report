@@ -176,20 +176,20 @@ ei_results_all$is_in_positive <- ifelse(ei_results_all$gene_trait_pairs %in% pos
 FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei #111
 TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei #28645
 
-sensitivity_ei<- TP_ei/(TP_ei+FN_ei) #0.65
-specificity_ei<- TN_ei/(TN_ei+FP_ei) #0.9883
-precision_ei<-TP_ei/(FP_ei+TP_ei) #0.2594
+sensitivity_ei<- TP_ei/(TP_ei+FN_ei)
+specificity_ei<- TN_ei/(TN_ei+FP_ei) 
+precision_ei<-TP_ei/(FP_ei+TP_ei) 
 
 ### EI prediction + IntAct
-TP_ei_intact<- sum(ei_loci_IntAct$is_in_positive) #118
-FP_ei_intact <- nrow(ei_loci_IntAct)-TP_ei_intact #1555
+TP_ei_intact<- sum(ei_loci_IntAct$is_in_positive) 
+FP_ei_intact <- nrow(ei_loci_IntAct)-TP_ei_intact 
 
-FN_ei_intact<- FN_ei #111
-TN_ei_intact <- TN_ei #28645
+FN_ei_intact<- FN_ei 
+TN_ei_intact <- TN_ei 
 
-sensitivity_ei_intact<- TP_ei_intact/(TP_ei_intact+FN_ei_intact) #0.72368
-specificity_ei_intact<- TN_ei_intact/(TN_ei_intact+FP_ei_intact) #0.95772
-precision_ei_intact<-TP_ei_intact/(FP_ei_intact+TP_ei_intact) #0.11627
+sensitivity_ei_intact<- TP_ei_intact/(TP_ei_intact+FN_ei_intact) 
+specificity_ei_intact<- TN_ei_intact/(TN_ei_intact+FP_ei_intact) 
+precision_ei_intact<-TP_ei_intact/(FP_ei_intact+TP_ei_intact)
 
 
 ## Visualize the data 
