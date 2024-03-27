@@ -29,8 +29,8 @@ interactions_all2 <- c()
 # Loop over the datasets
 for (i in seq_along(all_sig_datasets)) {
   # all_sig and pathway datasets
-  all_sig_pathway <- paste0("/Users/dandantan/Desktop/IntAct_spark_dataset/", all_sig_datasets[[i]])
-  TP <- paste0("/Users/dandantan/Desktop/IntAct_spark_dataset/", all_sig_datasets[[i]])
+  all_sig_pathway <- paste0("ExWAS_Data/", all_sig_datasets[[i]])
+  TP <- paste0("ExWAS_Data/", all_sig_datasets[[i]])
   
   #read csv
   all_sig <- read.csv(all_sig_pathway)
@@ -49,13 +49,7 @@ for (i in seq_along(all_sig_datasets)) {
   )
   local_sig_gene_ids <- as.data.frame(sig_gene_ids %>% collect())
   ###### Read Platform data
-  local_path <- "/Users/dandantan/Desktop/Open_target_2021_FDA/Dataset" # data released 21.11
-  
-  ass_indirectby_ds_path <- paste(
-    local_path,
-    "/associationByDatasourceIndirect/",
-    sep = ""
-  )
+  local_path <- "YourPathway/Open_target_2021_FDA/Dataset" # data released 21.11
   
   interaction_path <- paste(
     local_path,
@@ -65,7 +59,6 @@ for (i in seq_along(all_sig_datasets)) {
   
   # Data about indirect associations
   ass_indirectby_ds <- spark_read_parquet(sc, ass_indirectby_ds_path)
-  
   
   # Data about molecular interactions
   interactions <- spark_read_parquet(sc, interaction_path, memory = FALSE) %>%
@@ -84,7 +77,6 @@ for (i in seq_along(all_sig_datasets)) {
     select(trait_gene_pairs,Traits,gene_id,targetB) %>%
     sdf_distinct() %>%
     collect()
-  #write.csv(interactors_ass, "~/Desktop/interactions.csv")
   
   interactions_all <- c(interactions_all,nrow(interactors_ass))
   
@@ -92,7 +84,7 @@ for (i in seq_along(all_sig_datasets)) {
   gene_interactions <- paste(interactors_ass$targetB,interactors_ass$Traits,sep="_")
   
   #compare to the true positive
-  positive_control_set <- read_csv("/Users/dandantan/Desktop/IntAct_spark_dataset/positive_control_gene_list_with_opentarget.csv")
+  positive_control_set <- read_csv("ExWAS_Data/positive_control_gene_list.csv")
   positive_control_set <- positive_control_set %>%
     mutate(
       Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
@@ -113,21 +105,21 @@ for (i in seq_along(all_sig_datasets)) {
   positive_control_set$gene_trait_pairs <- paste(positive_control_set$ensg_gene_name, positive_control_set$Trait, sep = "_")
   
   # True Positives
-  True_Positives <- length(intersect(gene_interactions,positive_control_set$gene_trait_pairs)) #23 20 23 20
+  True_Positives <- length(intersect(gene_interactions,positive_control_set$gene_trait_pairs)) 
   True_Positives1<- intersect(gene_interactions,positive_control_set$gene_trait_pairs)
   True_positives_all <- c(True_positives_all, True_Positives)
   
   # existing identified TP gene_trait pairs in the original results
-  overlap_with_original <- length(intersect(True_Positives1, local_sig_gene_ids$trait_gene_pairs)) #9 7 9 8
+  overlap_with_original <- length(intersect(True_Positives1, local_sig_gene_ids$trait_gene_pairs)) 
   overlap_with_original1 <- intersect(True_Positives1, local_sig_gene_ids$trait_gene_pairs) 
   overlap_with_original_all<- c(overlap_with_original_all,overlap_with_original)
   
   # New identified gene_trait pairs with IntAct info
-  new_identified <- length(setdiff(True_Positives1, overlap_with_original1)) #14 13 14 12
+  new_identified <- length(setdiff(True_Positives1, overlap_with_original1)) 
   new_identified_all <- c(new_identified_all, new_identified)
   
   # existing gene_trait pairs in original ExWAS results
-  overlap_False_positive <- length(intersect(gene_interactions,all_sig$trait_gene_pairs)) # 24 34 27 28 
+  overlap_False_positive <- length(intersect(gene_interactions,all_sig$trait_gene_pairs)) 
   overlap_False_positive_all <- c(overlap_False_positive_all,overlap_False_positive)
   
   # newly found interactions
@@ -135,25 +127,13 @@ for (i in seq_along(all_sig_datasets)) {
 }
 
 #####################---------------------------------Try with Randomly selected genes--------------------------------#########################
-differences<- interactions_all2 #1737 3264 3364 4398
-ExWAS_results1 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_plof.csv")
-ExWAS_results2 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_alpha.csv")
-ExWAS_results3 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
-ExWAS_results4 <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5and1.csv")
+differences<- interactions_all2
+ExWAS_results <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
 
 total_average<-c()
-for (x in 1:4){
-  if (x == 1){
-    ExWAS_results <- ExWAS_results1
-  } else if (x == 2){
-    ExWAS_results <- ExWAS_results2
-  } else if (x == 3){
-    ExWAS_results <- ExWAS_results3
-  } else if (x == 4){
-    ExWAS_results <- ExWAS_results4
-  }
-  sums <- numeric(10000)
-  for (i in 1:10000) {
+
+sums <- numeric(10000)
+for (i in 1:10000) {
     difference <- differences[x]
     random_indices <- sample(1:nrow(ExWAS_results), difference, replace = FALSE)
     random_genes <- ExWAS_results4[random_indices, ]$trait_gene_pairs
@@ -162,20 +142,13 @@ for (x in 1:4){
     sums[i] <- sum(random_genes$is_in_positive)
   }
   average_sum <- mean(sums)
-  total_average <- c(total_average,average_sum)
-}
 
-cat("Averaged increased of True Positive with randomly selected pLoF is:",total_average[1],"\n",
-    "Averaged increased of True Positive with randomly selected pLoF with AlphaMissense is:",total_average[2],"\n",
-    "Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",total_average[3],"\n",
-    "Averaged increased of True Positive with randomly selected pLoF with Missense (1/5) is:",total_average[4])
-
+cat("Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",average_sum)
 ######################-------------------------------visualize the data-----------------------------------------------################################
 original_result <-c(196,341,317,407)
 original_TP <- c(42,60,57,60)
 false_positive <- original_result -original_TP
 
-# interactions_all - overlap_False_positive
 intact_result <- interactions_all2
 intact_TP <- new_identified_all
 
