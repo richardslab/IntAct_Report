@@ -53,9 +53,6 @@ for (i in seq_along(all_sig_datasets)) {
     sep = ""
   )
   
-  # Data about indirect associations
-  ass_indirectby_ds <- spark_read_parquet(sc, ass_indirectby_ds_path)
-  
   # Data about molecular interactions
   interactions <- spark_read_parquet(sc, interaction_path, memory = FALSE) %>%
     filter(sourceDatabase == "intact") %>%
@@ -65,7 +62,6 @@ for (i in seq_along(all_sig_datasets)) {
     filter(speciesA == speciesB)%>%  # only keep human species
     select(targetA, targetB) %>%
     sdf_distinct()
-  
   
   #Filter by interactions
   interactors_ass <- sig_gene_ids %>%
@@ -81,6 +77,7 @@ for (i in seq_along(all_sig_datasets)) {
   
   #compare to the true positive
   positive_control_set <- read_csv("ExWAS_Data/positive_control_gene_list.csv")
+  #change trait names to match the data
   positive_control_set <- positive_control_set %>%
     mutate(
       Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
@@ -142,18 +139,18 @@ for (i in 1:10000) {
 cat("Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",average_sum)
 ######################-------------------------------visualize the data-----------------------------------------------################################
 original_result <-c(196,341,317,407)
-original_TP <- c(42,60,57,60)
+TP_original <- c(42,60,57,60)
 false_positive <- original_result -original_TP
 
 intact_result <- interactions_all2
 intact_TP <- new_identified_all
 
-withIntact_TP<- original_TP + intact_TP
+withIntact_TP<- TP_original + intact_TP
 withIntact_false_positive<- intact_result+original_result-withIntact_TP
 
 x_axis<- c("pLoF","pLoF with \nAlphaMissense","pLoF with \nMissense (5/5)","pLoF with\n Missense (1/5)")
 
-value<- c(original_TP,false_positive,withIntact_TP,withIntact_false_positive)
+value<- c(TP_original,false_positive,withIntact_TP,withIntact_false_positive)
 data <- data.frame(
   facet = rep(x_axis, each = 1), 
   group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each = 8),
@@ -179,7 +176,7 @@ ggplot(data, aes(x = group, y = value, fill = stack)) +
         legend.text=element_text(size=20))
 
 ## Only True Positives
-value2<- c(original_TP,withIntact_TP)
+value2<- c(TP_original,withIntact_TP)
 data2 <- data.frame(
   facet = rep(x_axis, each = 1), 
   group = rep(c("Original \nExWAS", "ExWAS\nwith\nIntAct"), each =4),
