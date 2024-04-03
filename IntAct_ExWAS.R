@@ -1,12 +1,8 @@
 library("tidyverse")
 library("sparklyr")
 library("sparklyr.nested")
-library("cowplot")
 library("ggsci")
 library("ggplot2")
-library("likert")
-library("reshape2")
-
 
 
 # Define the list of all_sig datasets and corresponding pathway datasets
