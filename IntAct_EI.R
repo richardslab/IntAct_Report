@@ -1,24 +1,21 @@
 library("tidyverse")
 library("sparklyr")
 library("sparklyr.nested")
-library("cowplot")
 library("ggsci")
 library("ggplot2")
 library("reshape2")
 library("dplyr")
-library("PRROC")
 library("biomaRt")
 
 ###################################----------------------------Data Preprocesses--------------------------------#############################
 # Read the EI algorithm prediction results
-ei_path <-"EI_Data/ei_results.csv"
+ei_path <-"Yourpathyways/ei_results.csv"
 ei_results_all <- read.csv(ei_path)
 
 # Read the positive control set (validate Ei result)
-result_path<- "EI_Data/positive_control_set_ei.csv"
+result_path<- "Yourpathyways/positive_control_set_ei.csv"
 positive_control_set_ei <- read.csv(result_path)
 positive_control_set_ei$gene_trait_pairs <- paste(positive_control_set_ei$hgnc_gene_name, positive_control_set_ei$Trait, sep = "_")
-
 
 ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
 
@@ -80,7 +77,7 @@ highest_prob_per_locus_new$ensmble_genes <- unlist(highest_prob_per_locus_new$en
 config <- spark_config()
 sc <- spark_connect(master = "local", config = config)
 
-local_path <- "YourPathway/Open_target_2021_FDA/Dataset"
+local_path <- "Yourpathyways/Open_target_2021_FDA/Dataset"
 interaction_path <- paste(
   local_path,
   "/interaction/",
@@ -123,13 +120,13 @@ interactors_ass <- interactors_ass %>% rename(
   locus.end = locus_end,
   locus.name = locus_name,
 )
-sum(interactors_ass$is_in_positive) # 48/968
+sum(interactors_ass$is_in_positive) # 49/968
 
 ei_loci_IntAct <- bind_rows(interactors_ass, highest_prob_per_locus_new)%>%
   distinct()
 
 ###########------------------ With Random selected genes--------------##########
-ExWAS_results <- read.csv("ExWAS_Data/ExWAS_results_all_5in5.csv")
+ExWAS_results <- read.csv("Yourpathyways/ExWAS_results_all_5in5.csv")
 difference <- nrow(ei_loci_IntAct) - nrow(highest_prob_per_locus_new) # number of interacting genes
 positive_control_set_ei2 <- positive_control_set_ei %>%
   mutate(
@@ -160,23 +157,23 @@ TP_random <- 69 + average_sum
 FP_random <- 100 + difference -average_sum
 FN_random <- 111
 TN_random <- 28645
-precision_random <- TP_random/(TP_random+FP_random) #0.04224812
-sensitivity_random <- TP_random/(TP_random+FN_random)#0.3890394
-specificity_random<- TN_random/(TN_random+FP_random)#0.9470261
+precision_random <- TP_random/(TP_random+FP_random) 
+sensitivity_random <- TP_random/(TP_random+FN_random)
+specificity_random<- TN_random/(TN_random+FP_random)
 
 ########################------------------Evaluate  with sensitivity and specificity and precision-------------------------##################################
 
 ### EI prediction
-TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) #69
-FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei #100
+TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) 
+FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei 
 
 ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
 ei_results_all$is_in_positive <- ifelse(ei_results_all$gene_trait_pairs %in% positive_control_set_ei$gene_trait_pairs, 1, 0)
 
-FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei #111
-TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei #28645
+FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei 
+TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei 
 
-sensitivity_ei<- TP_ei/(TP_ei+FN_ei)
+sensitivity_ei<- TP_ei/(TP_ei+FN_ei) 
 specificity_ei<- TN_ei/(TN_ei+FP_ei) 
 precision_ei<-TP_ei/(FP_ei+TP_ei) 
 
@@ -189,7 +186,7 @@ TN_ei_intact <- TN_ei
 
 sensitivity_ei_intact<- TP_ei_intact/(TP_ei_intact+FN_ei_intact) 
 specificity_ei_intact<- TN_ei_intact/(TN_ei_intact+FP_ei_intact) 
-precision_ei_intact<-TP_ei_intact/(FP_ei_intact+TP_ei_intact)
+precision_ei_intact<-TP_ei_intact/(FP_ei_intact+TP_ei_intact) 
 
 
 ## Visualize the data 
