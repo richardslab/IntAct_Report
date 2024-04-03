@@ -206,7 +206,6 @@ ggplot(data2, aes(x = group, y = value, fill = stack)) +
 total_positive <- c(682,698,694,698)
 total_num_rows <- c(388442,393081,392014,393288)
 
-TP_original<- c(42,60,57,60)
 FP_original<- false_positive
 FN_original<- total_positive-TP_original
 TN_original<- total_num_rows-total_positive-FP_original
