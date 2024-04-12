@@ -9,13 +9,14 @@ library("biomaRt")
 
 ###################################----------------------------Data Preprocesses--------------------------------#############################
 # Read the EI algorithm prediction results
-ei_path <-"Yourpathyways/ei_results.csv"
+ei_path <-"YourPathways/ei_results.csv"
 ei_results_all <- read.csv(ei_path)
 
 # Read the positive control set (validate Ei result)
-result_path<- "Yourpathyways/positive_control_set_ei.csv"
+result_path<- "YourPathways/ei_positive_control_gene_list.csv"
 positive_control_set_ei <- read.csv(result_path)
-positive_control_set_ei$gene_trait_pairs <- paste(positive_control_set_ei$hgnc_gene_name, positive_control_set_ei$Trait, sep = "_")
+positive_control_set_ei$gene_trait_pairs <- paste(positive_control_set_ei$Gene.Symbol, positive_control_set_ei$Trait, sep = "_")
+
 
 ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
 
@@ -35,7 +36,8 @@ ei_loci <- ei_results_all %>%
 # Find the highest EI score for each trait at each locus
 highest_prob_per_locus <- ei_loci %>%
   group_by(all.trait, locus.name) %>%
-  filter(all.locus.prob == max(all.locus.prob, na.rm = TRUE)) #169 genes
+  filter(all.locus.prob == max(all.locus.prob, na.rm = TRUE)) #150 genes
+
 # Convert Gene Symbol to ensembl ID
 ensembl <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
 ensembl_gene_id <- data.frame(gene_name = highest_prob_per_locus$names.genes,
@@ -55,16 +57,16 @@ for (i in 1:nrow(ensembl_gene_id)) {
 }
 
 # manually correct ensbmle id
-ensembl_gene_id[[24,2]] = "ENSG00000225663"
-ensembl_gene_id[[44,2]] = "ENSG00000175164"
-ensembl_gene_id[[74,2]] = "ENSG00000171862"
-ensembl_gene_id[[84,2]] = "ENSG00000103489"
-ensembl_gene_id[[102,2]] = "ENSG00000214575"
-ensembl_gene_id[[103,2]] = "ENSG00000007968"
-ensembl_gene_id[[137,2]] = "ENSG00000168925"
-ensembl_gene_id[[145,2]] = "ENSG00000275410"
-ensembl_gene_id[[150,2]] = "ENSG00000053918"
-ensembl_gene_id[[165,2]] = "ENSG00000084674"
+ensembl_gene_id[[22,2]] = "ENSG00000225663"
+ensembl_gene_id[[41,2]] = "ENSG00000175164"
+ensembl_gene_id[[71,2]] = "ENSG00000171862"
+ensembl_gene_id[[81,2]] = "ENSG00000103489"
+ensembl_gene_id[[95,2]] = " ENSG00000186073"
+ensembl_gene_id[[98,2]] = "ENSG00000214575"
+ensembl_gene_id[[99,2]] = "ENSG00000007968"
+ensembl_gene_id[[135,2]] = "ENSG00000275410"
+ensembl_gene_id[[140,2]] = "ENSG00000053918"
+ensembl_gene_id[[146,2]] = "ENSG00000084674"
 
 highest_prob_per_locus_new <- highest_prob_per_locus %>% 
   left_join(ensembl_gene_id, by = c("names.genes" = "gene_name"))
@@ -77,7 +79,7 @@ highest_prob_per_locus_new$ensmble_genes <- unlist(highest_prob_per_locus_new$en
 config <- spark_config()
 sc <- spark_connect(master = "local", config = config)
 
-local_path <- "Yourpathyways/Open_target_2021_FDA/Dataset"
+local_path <- "YourPathways/Open_target_2021_FDA/Dataset"
 interaction_path <- paste(
   local_path,
   "/interaction/",
@@ -105,7 +107,7 @@ interactors_ass <- highest_prob_per_locus_spark %>%
   collect() #968 rows
 
 interactors_ass$gene_trait_pairs2 <- paste(interactors_ass$targetB, interactors_ass$all_trait,sep = "_")
-positive_control_set_ei$gene_trait_pairs2<- paste(positive_control_set_ei$ensg_gene_name, positive_control_set_ei$Trait, sep = "_")
+positive_control_set_ei$gene_trait_pairs2<- paste(positive_control_set_ei$ensemble_gene, positive_control_set_ei$Trait, sep = "_")
 
 #check if the interacting genes in the positive control set
 interactors_ass$is_in_positive <- ifelse(interactors_ass$gene_trait_pairs2 %in% positive_control_set_ei$gene_trait_pairs2, 1, 0)
@@ -120,13 +122,13 @@ interactors_ass <- interactors_ass %>% rename(
   locus.end = locus_end,
   locus.name = locus_name,
 )
-sum(interactors_ass$is_in_positive) # 49/968
+sum(interactors_ass$is_in_positive) # 47/1417
 
 ei_loci_IntAct <- bind_rows(interactors_ass, highest_prob_per_locus_new)%>%
   distinct()
 
 ###########------------------ With Random selected genes--------------##########
-ExWAS_results <- read.csv("Yourpathyways/ExWAS_results_all_5in5.csv")
+ExWAS_results <- read.csv("YourPathways/ExWAS_results_all_5in5.csv")
 difference <- nrow(ei_loci_IntAct) - nrow(highest_prob_per_locus_new) # number of interacting genes
 positive_control_set_ei2 <- positive_control_set_ei %>%
   mutate(
@@ -153,10 +155,10 @@ for (i in 1:10000) {
   sums[i] <- sum(random_genes$is_in_positive)
 }
 average_sum <- mean(sums) # about 1
-TP_random <- 69 + average_sum
-FP_random <- 100 + difference -average_sum
-FN_random <- 111
-TN_random <- 28645
+TP_random <- 59 + average_sum
+FP_random <- 91 + difference -average_sum
+FN_random <- 100
+TN_random <- 28675
 precision_random <- TP_random/(TP_random+FP_random) 
 sensitivity_random <- TP_random/(TP_random+FN_random)
 specificity_random<- TN_random/(TN_random+FP_random)
@@ -164,14 +166,14 @@ specificity_random<- TN_random/(TN_random+FP_random)
 ########################------------------Evaluate  with sensitivity and specificity and precision-------------------------##################################
 
 ### EI prediction
-TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) 
-FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei 
+TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) #59
+FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei #91
 
 ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
 ei_results_all$is_in_positive <- ifelse(ei_results_all$gene_trait_pairs %in% positive_control_set_ei$gene_trait_pairs, 1, 0)
 
-FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei 
-TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei 
+FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei #100
+TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei #28675
 
 sensitivity_ei<- TP_ei/(TP_ei+FN_ei) 
 specificity_ei<- TN_ei/(TN_ei+FP_ei) 
@@ -198,6 +200,7 @@ data <- data.frame(Method = rep(c("EI", "EI with IntAct"), each = 3),
                    Metric = rep(x_axis, 2),
                    Value = c(data_ei, data_ei_intact))
 
+
 ggplot(data, aes(x = Metric, y = Value, fill = Method)) +
   geom_bar(stat = "identity", position = "dodge") +
   geom_text(aes(label = round(Value, 3)), vjust = -0.2, position = position_dodge(width = 0.9), size = 9) +
@@ -212,8 +215,8 @@ ggplot(data, aes(x = Metric, y = Value, fill = Method)) +
     legend.text = element_text(size = 20),  
     legend.title = element_text(size = 20),
     legend.position = "bottom"
-  )
-
+  ) +
+  scale_fill_manual(values = c("#d6604d","#4393c3"))
 
 ###################################----------------------------Plot TP vs FP -----------------------#############################
 total_TP <- c(TP_ei, TP_ei_intact)
@@ -226,7 +229,7 @@ df2 <- data.frame(Method = methods, group =groups,value=c(total_TP,total_FP))
 
 ggplot(df2, aes(x = Method, y = value, fill = group)) +
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = round(value, 3)), vjust = 1, size = 9, color = "black",position = position_stack(vjust = 0.6)) +
+  #geom_text(aes(label = round(value, 3)), vjust = 1, size = 9, color = "black",position = position_stack(vjust = 0.6)) +
   labs(x = "Method", y = "Num of Significant Genes", fill = "Legend",) +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 22),  
@@ -235,6 +238,7 @@ ggplot(df2, aes(x = Method, y = value, fill = group)) +
         axis.title.y = element_text(size = 20),  
         legend.text = element_text(size = 20),
         legend.title = element_text(size = 20),
-        legend.position = "bottom")
+        legend.position = "bottom")+
+  scale_fill_manual(values = c("#9970ab","#5aae61"))
 
 
