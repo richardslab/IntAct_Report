@@ -25,8 +25,8 @@ interactions_all2 <- c()
 # Loop over the datasets
 for (i in seq_along(all_sig_datasets)) {
   # all_sig and pathway datasets
-  all_sig_pathway <- paste0("ExWAS_Data/", all_sig_datasets[[i]])
-  TP <- paste0("ExWAS_Data/", all_sig_datasets[[i]])
+  all_sig_pathway <- paste0("YourPathways/", all_sig_datasets[[i]])
+  TP <- paste0("YourPathways/", all_sig_datasets[[i]])
   
   #read csv
   all_sig <- read.csv(all_sig_pathway)
@@ -44,14 +44,16 @@ for (i in seq_along(all_sig_datasets)) {
     memory = FALSE
   )
   local_sig_gene_ids <- as.data.frame(sig_gene_ids %>% collect())
+  
   ###### Read Platform data
-  local_path <- "YourPathway/Open_target_2021_FDA/Dataset" # data released 21.11
+  local_path <- "YourPathways/Open_target_2021_FDA/Dataset" # data released 21.11
   
   interaction_path <- paste(
     local_path,
     "/interaction/",
     sep = ""
   )
+  
   
   # Data about molecular interactions
   interactions <- spark_read_parquet(sc, interaction_path, memory = FALSE) %>%
@@ -60,13 +62,14 @@ for (i in seq_along(all_sig_datasets)) {
     filter(!is.na(targetB)) %>%
     filter(scoring > 0.42) %>%
     filter(speciesA == speciesB)%>%  # only keep human species
-    select(targetA, targetB) %>%
+    dplyr::select(targetA, targetB) %>%
     sdf_distinct()
+  
   
   #Filter by interactions
   interactors_ass <- sig_gene_ids %>%
     inner_join(interactions, by = c("gene_id" = "targetA")) %>%
-    select(trait_gene_pairs,Traits,gene_id,targetB) %>%
+    dplyr::select(trait_gene_pairs,Traits,gene_id,targetB) %>%
     sdf_distinct() %>%
     collect()
   
@@ -76,8 +79,8 @@ for (i in seq_along(all_sig_datasets)) {
   gene_interactions <- paste(interactors_ass$targetB,interactors_ass$Traits,sep="_")
   
   #compare to the true positive
-  positive_control_set <- read_csv("ExWAS_Data/positive_control_gene_list.csv")
-  #change trait names to match the data
+  positive_control_set <- read_csv("YourPathways/positive_control_gene_list.csv")
+  #change the trait names to match the data
   positive_control_set <- positive_control_set %>%
     mutate(
       Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
@@ -112,7 +115,7 @@ for (i in seq_along(all_sig_datasets)) {
   new_identified_all <- c(new_identified_all, new_identified)
   
   # existing gene_trait pairs in original ExWAS results
-  overlap_False_positive <- length(intersect(gene_interactions,all_sig$trait_gene_pairs)) 
+  overlap_False_positive <- length(intersect(gene_interactions,all_sig$trait_gene_pairs))
   overlap_False_positive_all <- c(overlap_False_positive_all,overlap_False_positive)
   
   # newly found interactions
@@ -120,13 +123,25 @@ for (i in seq_along(all_sig_datasets)) {
 }
 
 #####################---------------------------------Try with Randomly selected genes--------------------------------#########################
-differences<- interactions_all2
-ExWAS_results <- read.csv("/Users/dandantan/Desktop/IntAct_spark_dataset/ExWAS_results_all_5in5.csv")
+differences<- interactions_all2 #1737 3264 3364 4398
+ExWAS_results1 <- read.csv("/YourPathways/ExWAS_results_all_plof.csv")
+ExWAS_results2 <- read.csv("/YourPathways/ExWAS_results_all_alpha.csv")
+ExWAS_results3 <- read.csv("/YourPathways/ExWAS_results_all_5in5.csv")
+ExWAS_results4 <- read.csv("/YourPathways/ExWAS_results_all_5in5and1.csv")
 
 total_average<-c()
-
-sums <- numeric(10000)
-for (i in 1:10000) {
+for (x in 1:4){
+  if (x == 1){
+    ExWAS_results <- ExWAS_results1
+  } else if (x == 2){
+    ExWAS_results <- ExWAS_results2
+  } else if (x == 3){
+    ExWAS_results <- ExWAS_results3
+  } else if (x == 4){
+    ExWAS_results <- ExWAS_results4
+  }
+  sums <- numeric(10000)
+  for (i in 1:10000) {
     difference <- differences[x]
     random_indices <- sample(1:nrow(ExWAS_results), difference, replace = FALSE)
     random_genes <- ExWAS_results4[random_indices, ]$trait_gene_pairs
@@ -135,13 +150,20 @@ for (i in 1:10000) {
     sums[i] <- sum(random_genes$is_in_positive)
   }
   average_sum <- mean(sums)
+  total_average <- c(total_average,average_sum)
+}
 
-cat("Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",average_sum)
+cat("Averaged increased of True Positive with randomly selected pLoF is:",total_average[1],"\n",
+    "Averaged increased of True Positive with randomly selected pLoF with AlphaMissense is:",total_average[2],"\n",
+    "Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",total_average[3],"\n",
+    "Averaged increased of True Positive with randomly selected pLoF with Missense (1/5) is:",total_average[4])
+
 ######################-------------------------------visualize the data-----------------------------------------------################################
 original_result <-c(196,341,317,407)
 TP_original <- c(42,60,57,60)
-false_positive <- original_result -original_TP
+false_positive <- original_result -TP_original
 
+# interactions_all - overlap_False_positive
 intact_result <- interactions_all2
 intact_TP <- new_identified_all
 
@@ -160,7 +182,7 @@ data <- data.frame(
 
 ggplot(data, aes(x = group, y = value, fill = stack)) + 
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = value), position = position_stack(vjust = 0.7), size = 6.5) + 
+ # geom_text(aes(label = value), position = position_stack(vjust = 0.7), size = 6.5) + 
   facet_grid(~ facet) +
   labs(
     x = "ExWAS Datasets",
@@ -173,7 +195,9 @@ ggplot(data, aes(x = group, y = value, fill = stack)) +
         axis.title.x = element_text(size = 20),
         axis.text.y = element_text(size = 20),
         axis.title.y = element_text(size = 20),
-        legend.text=element_text(size=20))
+        legend.text=element_text(size=20),
+        legend.position = "bottom")+  scale_fill_manual(values = c("#9970ab","#5aae61"))
+
 
 ## Only True Positives
 value2<- c(TP_original,withIntact_TP)
@@ -192,14 +216,14 @@ ggplot(data2, aes(x = group, y = value, fill = stack)) +
     x = "ExWAS Datasets",
     y = "Num of Causal Genes",
     fill = "Legend"
-  ) + scale_fill_manual(values = "lightblue") +
+  ) + scale_fill_manual(values = "#5aae61") +
   theme_minimal()+   
   theme(strip.text = element_text(size = 20, color = "black"),
         axis.text.x = element_text(size = 16),
         axis.title.x = element_text(size = 20),
         axis.text.y = element_text(size = 20),
         axis.title.y = element_text(size = 20),
-        legend.text=element_text(size=20))
+        legend.text=element_text(size=20),legend.position = "bottom")
 
 
 ############################--------------Evaluate with sensitivity, precison and specificity--------------------################################
@@ -221,7 +245,7 @@ FN_IntAct<- FN_original
 TN_IntAct<- TN_original
 
 sensitivity_IntAct<- TP_IntAct/(TP_IntAct+FN_IntAct) 
-specificity_IntAct<- TN_IntAct/(TN_IntAct+FP_IntAct) 
+specificity_IntAct<- TN_IntAct/(TN_IntAct+FP_IntAct)
 precision_IntAct<-TP_IntAct/(FP_IntAct+TP_IntAct) 
 
 # Draw the plot
@@ -269,7 +293,8 @@ ggplot(plot_precision, aes(x = group, y = value, fill = group)) +
         axis.title.x = element_text(size = 20),
         axis.text.y = element_text(size = 20),
         axis.title.y = element_text(size = 20),
-        legend.text=element_text(size=16))
+        legend.text=element_text(size=16))+
+  scale_fill_manual(values = c("#d6604d","#4393c3"))
 
 ##Sensitivity
 ggplot(plot_sensitivity, aes(x = group, y = value, fill = group)) + 
@@ -287,7 +312,8 @@ ggplot(plot_sensitivity, aes(x = group, y = value, fill = group)) +
         axis.title.x = element_text(size = 20),
         axis.text.y = element_text(size = 20),
         axis.title.y = element_text(size = 20),
-        legend.text=element_text(size=16))
+        legend.text=element_text(size=16))+
+  scale_fill_manual(values = c("#d6604d","#4393c3"))
 
 
 ##Specificity
@@ -306,7 +332,8 @@ ggplot(plot_specificity, aes(x = group, y = value, fill = group)) +
         axis.title.x = element_text(size = 20),
         axis.text.y = element_text(size = 20),
         axis.title.y = element_text(size = 20),
-        legend.text=element_text(size=16))
+        legend.text=element_text(size=16))+
+  scale_fill_manual(values = c("#d6604d","#4393c3"))
 
 
 
