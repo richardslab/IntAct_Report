@@ -127,52 +127,17 @@ sum(interactors_ass$is_in_positive) # 47/1417
 ei_loci_IntAct <- bind_rows(interactors_ass, highest_prob_per_locus_new)%>%
   distinct()
 
-###########------------------ With Random selected genes--------------##########
-ExWAS_results <- read.csv("YourPathways/ExWAS_results_all_5in5.csv")
-difference <- nrow(ei_loci_IntAct) - nrow(highest_prob_per_locus_new) # number of interacting genes
-positive_control_set_ei2 <- positive_control_set_ei %>%
-  mutate(
-    Trait = ifelse(Trait == "ebmd", "ZBMD", Trait),
-    Trait = ifelse(Trait == "tg", "IRNT_TG", Trait),
-    Trait = ifelse(Trait == "t2d", "T2D", Trait),
-    Trait = ifelse(Trait == "ldl", "IRNT_LDL", Trait),
-    Trait = ifelse(Trait == "height", "IRNT_height", Trait),
-    Trait = ifelse(Trait == "lowtsh", "lowtsh", Trait),
-    Trait = ifelse(Trait == "rbc", "IRNT_RBC", Trait),
-    Trait = ifelse(Trait == "dbp", "IRNT_DBP", Trait),
-    Trait = ifelse(Trait == "calcium", "IRNT_Ca", Trait),
-    Trait = ifelse(Trait == "sbp", "IRNT_SBP", Trait),
-    Trait = ifelse(Trait == "glucose", "IRNT_glu", Trait),
-    Trait = ifelse(Trait == "dbilirubin", "IRNT_biliru", Trait)
-  )
-positive_control_set_ei2$gene_trait_pairs2 <- paste(positive_control_set_ei2$ensg_gene_name, positive_control_set_ei2$Trait, sep = "_")
-sums <- numeric(10000)
-for (i in 1:10000) {
-  random_indices <- sample(1:nrow(ExWAS_results), difference, replace = FALSE)
-  random_genes <- ExWAS_results[random_indices, ]$trait_gene_pairs
-  random_genes <- as.data.frame(random_genes)
-  random_genes$is_in_positive <- ifelse(random_genes$random_genes %in% positive_control_set_ei2$gene_trait_pairs2, 1, 0)
-  sums[i] <- sum(random_genes$is_in_positive)
-}
-average_sum <- mean(sums) # about 1
-TP_random <- 59 + average_sum
-FP_random <- 91 + difference -average_sum
-FN_random <- 100
-TN_random <- 28675
-precision_random <- TP_random/(TP_random+FP_random) 
-sensitivity_random <- TP_random/(TP_random+FN_random)
-specificity_random<- TN_random/(TN_random+FP_random)
 
 ########################------------------Evaluate  with sensitivity and specificity and precision-------------------------##################################
 
 ### EI prediction
-TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) #59
-FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei #91
+TP_ei<- sum(highest_prob_per_locus_new$is_in_positive) 
+FP_ei <- nrow(highest_prob_per_locus_new)-TP_ei 
 
 ei_results_all$gene_trait_pairs <- paste(ei_results_all$names.genes, ei_results_all$all.trait, sep = "_")
 ei_results_all$is_in_positive <- ifelse(ei_results_all$gene_trait_pairs %in% positive_control_set_ei$gene_trait_pairs, 1, 0)
 
-FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei #100
+FN_ei<- sum(ei_results_all$is_in_positive) - TP_ei 
 TN_ei <- nrow(ei_results_all)-sum(ei_results_all$is_in_positive)-FP_ei #28675
 
 sensitivity_ei<- TP_ei/(TP_ei+FN_ei) 
