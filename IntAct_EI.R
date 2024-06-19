@@ -104,7 +104,7 @@ interactors_ass <- highest_prob_per_locus_spark %>%
   inner_join(interactions, by = c("ensmble_genes" = "targetA")) %>%
   dplyr::select(X_1,X,all_locus_prob, all_locus_y,names_genes,all_trait,locus_chrm,locus_start,locus_end, locus_name, gene_trait_pairs,targetB) %>%
   sdf_distinct() %>%
-  collect() #968 rows
+  collect() 
 
 interactors_ass$gene_trait_pairs2 <- paste(interactors_ass$targetB, interactors_ass$all_trait,sep = "_")
 positive_control_set_ei$gene_trait_pairs2<- paste(positive_control_set_ei$ensemble_gene, positive_control_set_ei$Trait, sep = "_")
@@ -122,7 +122,7 @@ interactors_ass <- interactors_ass %>% rename(
   locus.end = locus_end,
   locus.name = locus_name,
 )
-sum(interactors_ass$is_in_positive) # 47/1417
+sum(interactors_ass$is_in_positive) 
 
 ei_loci_IntAct <- bind_rows(interactors_ass, highest_prob_per_locus_new)%>%
   distinct()
