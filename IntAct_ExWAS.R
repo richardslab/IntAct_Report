@@ -122,42 +122,6 @@ for (i in seq_along(all_sig_datasets)) {
   interactions_all2 <- c(interactions_all2,(nrow(interactors_ass)-overlap_False_positive))
 }
 
-#####################---------------------------------Try with Randomly selected genes--------------------------------#########################
-differences<- interactions_all2 #1737 3264 3364 4398
-ExWAS_results1 <- read.csv("/YourPathways/ExWAS_results_all_plof.csv")
-ExWAS_results2 <- read.csv("/YourPathways/ExWAS_results_all_alpha.csv")
-ExWAS_results3 <- read.csv("/YourPathways/ExWAS_results_all_5in5.csv")
-ExWAS_results4 <- read.csv("/YourPathways/ExWAS_results_all_5in5and1.csv")
-
-total_average<-c()
-for (x in 1:4){
-  if (x == 1){
-    ExWAS_results <- ExWAS_results1
-  } else if (x == 2){
-    ExWAS_results <- ExWAS_results2
-  } else if (x == 3){
-    ExWAS_results <- ExWAS_results3
-  } else if (x == 4){
-    ExWAS_results <- ExWAS_results4
-  }
-  sums <- numeric(10000)
-  for (i in 1:10000) {
-    difference <- differences[x]
-    random_indices <- sample(1:nrow(ExWAS_results), difference, replace = FALSE)
-    random_genes <- ExWAS_results4[random_indices, ]$trait_gene_pairs
-    random_genes <- as.data.frame(random_genes)
-    random_genes$is_in_positive <- ifelse(random_genes$random_genes %in% positive_control_set$gene_trait_pairs, 1, 0)
-    sums[i] <- sum(random_genes$is_in_positive)
-  }
-  average_sum <- mean(sums)
-  total_average <- c(total_average,average_sum)
-}
-
-cat("Averaged increased of True Positive with randomly selected pLoF is:",total_average[1],"\n",
-    "Averaged increased of True Positive with randomly selected pLoF with AlphaMissense is:",total_average[2],"\n",
-    "Averaged increased of True Positive with randomly selected pLoF with Missense (5/5) dataset:",total_average[3],"\n",
-    "Averaged increased of True Positive with randomly selected pLoF with Missense (1/5) is:",total_average[4])
-
 ######################-------------------------------visualize the data-----------------------------------------------################################
 original_result <-c(196,341,317,407)
 TP_original <- c(42,60,57,60)
